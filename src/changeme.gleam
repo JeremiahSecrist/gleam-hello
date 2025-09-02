@@ -11,9 +11,7 @@ import gleam/httpc
 const url = "https://pokeapi.co/api/v2"
 pub fn handle_request(req) {
   case wisp.path_segments(req) {
-    [] -> wisp.html_response(string_tree.from_string("<h1>Home Pagee</h1>"), 200)
-    ["about"] -> wisp.html_response(string_tree.from_string("<h1>About Page</h1>"), 200)
-    ["about"] -> wisp.html_response(string_tree.from_string(fetch_data(url)), 200)
+    [] -> wisp.json_response(string_tree.from_string(fetch_data(url)), 200)
     _ -> wisp.not_found()
   }
 }
