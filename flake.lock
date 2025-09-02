@@ -51,14 +51,27 @@
         "type": "indirect"
       }
     },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1756469547,
+        "narHash": "sha256-YvtD2E7MYsQ3r7K9K2G7nCslCKMPShoSEAtbjHLtH0k=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "41d292bfc37309790f70f4c120b79280ce40af16",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-25.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
         "gleam2nix": "gleam2nix",
-        "nixpkgs": [
-          "gleam2nix",
-          "nixpkgs"
-        ]
+        "nixpkgs": "nixpkgs_2"
       }
     },
     "systems": {

@@ -2,7 +2,7 @@
   description = "CHANGEME";
 
   inputs = {
-    nixpkgs.follows = "gleam2nix/nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
     gleam2nix.url = "github:mtoohey31/gleam2nix";
   };
@@ -31,7 +31,7 @@
       packages.default = CHANGEME;
 
       devShells.default = mkShell {
-        inputsFrom = [ CHANGEME ];
+        inputsFrom = [ pkgs.beamMinimal27Packages.rebar3 CHANGEME ];
       };
     });
 }
