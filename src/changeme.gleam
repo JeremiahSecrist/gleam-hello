@@ -1,5 +1,4 @@
 import gleam/io
-import gleam/int
 import gleam/erlang/process
 import gleam/string_tree
 import mist
@@ -7,34 +6,35 @@ import wisp
 import wisp/wisp_mist
 import gleam/http/request
 import gleam/httpc
+import gleam/uri
 
 const url = "https://pokeapi.co/api/v2"
 pub fn handle_request(req) {
   case wisp.path_segments(req) {
-    [] -> wisp.json_response(string_tree.from_string(fetch_data(url)), 200)
-    _ -> wisp.not_found()
+    [first, ..] -> case fetch_data(url <> "/"<>first) {
+      Ok(str) -> wisp.json_response(string_tree.from_string(str), 200)
+      Error(code) -> wisp.response(code)
+    }
+    _ -> wisp.response(404)
   }
 }
 
-// Simple function that returns a string - either the response body or an error message
-pub fn fetch_data(url: String) -> String {
+pub fn fetch_data(url: String) -> Result(String, Int) {
   case request.to(url) {
     Ok(req) -> {
       case httpc.send(req) {
         Ok(resp) -> {
           case resp.status {
-            200 -> resp.body
-            404 -> "No data found"
-            _ -> "Request failed with status: " <> int.to_string(resp.status)
+            200 -> Ok(resp.body)
+            a -> Error(a)
           }
         }
-        Error(_) -> "Failed to connect"
+        Error(_) -> Error(503)
       }
     }
-    Error(_) -> "Invalid URL"
+    Error(_) -> Error(400)
   }
 }
-
 
 pub fn main() {
   wisp.configure_logger()
