@@ -3,7 +3,9 @@ import gleam/erlang/process
 import gleam/string_tree
 import gleam/dict
 import gleam/int
+import gleam/list
 import gleam/otp/actor
+import gleam/result
 import mist
 import wisp
 import wisp/wisp_mist
@@ -25,21 +27,10 @@ fn handle_cache_message(
   message: CacheMessage,
 ) -> actor.Next(dict.Dict(String, String), CacheMessage) {
   case message {
-    Shutdown -> {
-      io.println("🛑 Cache shutting down")
-      actor.stop()
-    }
-    Set(key, value) -> {
-      io.println("✅ Caching: " <> key)
-      let new_cache = dict.insert(cache, key, value)
-      actor.continue(new_cache)
-    }
+    Shutdown -> actor.stop()
+    Set(key, value) -> actor.continue(dict.insert(cache, key, value))
     Get(key, reply_with) -> {
       let result = dict.get(cache, key)
-      case result {
-        Ok(_) -> io.println("🎯 Cache HIT: " <> key)
-        Error(_) -> io.println("❌ Cache MISS: " <> key)
-      }
       process.send(reply_with, result)
       actor.continue(cache)
     }
@@ -70,27 +61,20 @@ pub type AppState {
 // Request handler that takes the app state
 pub fn handle_request(req: wisp.Request, ctx: AppState) -> wisp.Response {
   case wisp.path_segments(req) {
-    [first, ..] -> {
-      let cache_key = first
-      case get_from_cache_or_fetch(ctx.cache, cache_key, url <> "/" <> first) {
-        Ok(str) -> {
-          wisp.json_response(string_tree.from_string(str), 200)
-        }
-        Error(code) -> {
-          wisp.response(code)
-        }
+     ["favicon.ico"] ->  wisp.response(204) 
+    resp -> {
+      let cache_key = list.fold(resp, "", fn (a, b){ a <> "/" <> b })
+      case get_from_cache_or_fetch(ctx.cache, cache_key, url  <> cache_key) {
+        Ok(str) -> wisp.json_response(string_tree.from_string(str), 200)
+        Error(code) -> wisp.response(code)
       }
     }
-    _ -> wisp.response(404)
   }
 }
 
 // Wrapper to match wisp handler signature
 pub fn request_handler(cache: process.Subject(CacheMessage)) -> fn(wisp.Request) -> wisp.Response {
-  fn(req: wisp.Request) -> wisp.Response {
-    let ctx = AppState(cache)
-    handle_request(req, ctx)
-  }
+  handle_request(_, AppState(cache))
 }
 
 pub fn get_from_cache_or_fetch(
@@ -98,57 +82,25 @@ pub fn get_from_cache_or_fetch(
   cache_key: String,
   api_url: String,
 ) -> Result(String, Int) {
-  // Check cache first
   case cache_get(cache, cache_key) {
-    Ok(cached_data) -> {
-      io.println("🚀 Using cached data for: " <> cache_key)
-      Ok(cached_data)
-    }
     Error(_) -> {
-      io.println("🔄 Cache miss, fetching from API: " <> cache_key)
-      case fetch_data(api_url) {
-        Ok(fresh_data) -> {
-          // Store in cache
-          cache_set(cache, cache_key, fresh_data)
-          io.println("💾 Data cached for: " <> cache_key)
-          Ok(fresh_data)
-        }
-        Error(code) -> {
-          io.println("🚨 API fetch failed: " <> int.to_string(code))
-          Error(code)
-        }
-      }
+      use fresh_data <- result.try(fetch_data(api_url))
+      cache_set(cache, cache_key, fresh_data)
+      Ok(fresh_data)
     }
+    Ok(cached_data) -> Ok(cached_data)
   }
 }
 
 pub fn fetch_data(url: String) -> Result(String, Int) {
-  io.println("🌐 Making API call to: " <> url)
-  case request.to(url) {
-    Ok(req) -> {
-      case httpc.send(req) {
-        Ok(resp) -> {
-          case resp.status {
-            200 -> {
-              let body_length = string_tree.from_string(resp.body) |> string_tree.byte_size
-              io.println("✅ API success (" <> int.to_string(body_length) <> " bytes)")
-              Ok(resp.body)
-            }
-            status_code -> {
-              io.println("❌ API error: " <> int.to_string(status_code))
-              Error(status_code)
-            }
-          }
-        }
-        Error(_) -> {
-          io.println("🚨 HTTP request failed")
-          Error(503)
-        }
-      }
+  use req <- result.try(request.to(url) |> result.replace_error( 400 ))
+  use resp <- result.try(httpc.send(req) |> result.replace_error( 503 ))
+  case resp.status {
+    200 -> {
+      Ok(resp.body)
     }
-    Error(_) -> {
-      io.println("🚨 Invalid URL: " <> url)
-      Error(400)
+    status_code -> {
+      Error(status_code)
     }
   }
 }
@@ -172,9 +124,6 @@ pub fn main() {
         |> mist.start
       
       io.println("🚀 Server running at http://localhost:8000")
-      io.println("🎯 Cache persists across requests - try the same endpoint twice!")
-      io.println("🧪 Test with: curl http://localhost:8000/pokemon/1")
-      io.println("📊 Second request should show Cache HIT!")
       
       process.sleep_forever()
     }
