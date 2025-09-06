@@ -1,63 +1,16 @@
 import gleam/io
 import gleam/erlang/process
 import gleam/string_tree
-import gleam/dict
 import gleam/list
-import gleam/otp/actor
 import gleam/result
 import mist
 import wisp
 import wisp/wisp_mist
 import gleam/http/request
 import gleam/httpc
-import gleam/json
-import gleam/dynamic/decode
-
+import pokeapi.{pokemon_decoder,pokemon_encoder}
+import cache.{AppState, type CacheMessage, type AppState}
 const url = "https://pokeapi.co/api/v2"
-
-// Cache messages
-pub type CacheMessage {
-  Set(key: String, value: String)
-  Get(key: String, reply_with: process.Subject(Result(String, Nil)))
-  Shutdown
-}
-
-// Cache message handler
-fn handle_cache_message(
-  cache: dict.Dict(String, String),
-  message: CacheMessage,
-) -> actor.Next(dict.Dict(String, String), CacheMessage) {
-  case message {
-    Shutdown -> actor.stop()
-    Set(key, value) -> actor.continue(dict.insert(cache, key, value))
-    Get(key, reply_with) -> {
-      let result = dict.get(cache, key)
-      process.send(reply_with, result)
-      actor.continue(cache)
-    }
-  }
-}
-
-// Start cache actor
-pub fn start_cache() -> Result(actor.Started(process.Subject(CacheMessage)), actor.StartError) {
-  actor.new(dict.new())
-  |> actor.on_message(handle_cache_message)
-  |> actor.start()
-}
-
-// Cache operations
-pub fn cache_set(cache: process.Subject(CacheMessage), key: String, value: String) {
-  process.send(cache, Set(key, value))
-}
-
-pub fn cache_get(cache: process.Subject(CacheMessage), key: String) -> Result(String, Nil) {
-  process.call(cache, 5000, Get(key, _))
-}
-
-// Global cache subject - we'll pass this around
-pub type AppState {
-  AppState(cache: process.Subject(CacheMessage))
-}
 
 // Request handler that takes the app state
 pub fn handle_request(req: wisp.Request, ctx: AppState) -> wisp.Response {
@@ -69,7 +22,7 @@ pub fn handle_request(req: wisp.Request, ctx: AppState) -> wisp.Response {
         Ok(str) ->
           case pokemon_decoder(str) {
             Ok(val) -> wisp.json_response(string_tree.from_string(pokemon_encoder(val)), 200)
-            Error(_) -> wisp.response(204)
+            Error(_) -> wisp.json_response(string_tree.from_string(str), 200)
           }
         Error(code) -> wisp.response(code)
       }
@@ -82,35 +35,16 @@ pub fn request_handler(cache: process.Subject(CacheMessage)) -> fn(wisp.Request)
   handle_request(_, AppState(cache))
 }
 
-pub type Pokemon {
-  Pokemon(name: String)
-}
-
-pub fn pokemon_decoder(json_string: String) -> Result(Pokemon, json.DecodeError) {
-    let poke_decoder = {
-      use name <- decode.field("name", decode.string)
-      decode.success(Pokemon(name:))
-    }
-    json.parse(from: json_string, using: poke_decoder)
-
-}
-
-pub fn pokemon_encoder(pokemon: Pokemon) -> String {
-  json.object([
-    #("name", json.string(pokemon.name)),
-  ])
-  |> json.to_string
-}
 
 pub fn get_from_cache_or_fetch(
   cache: process.Subject(CacheMessage),
   cache_key: String,
   api_url: String,
 ) -> Result(String, Int) {
-  case cache_get(cache, cache_key) {
+  case cache.get(cache, cache_key) {
     Error(_) -> {
       use fresh_data <- result.try(fetch_data(api_url))
-      cache_set(cache, cache_key, fresh_data)
+      cache.set(cache, cache_key, fresh_data)
       Ok(fresh_data)
     }
     Ok(cached_data) -> Ok(cached_data)
@@ -136,7 +70,7 @@ pub fn main() {
   io.println("🏁 Starting Pokemon API with persistent caching...")
 
   // Create a persistent cache that survives across requests
-  case start_cache() {
+  case cache.start() {
     Ok(started) -> {
       let cache = started.data
 
