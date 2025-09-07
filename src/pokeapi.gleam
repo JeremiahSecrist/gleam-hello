@@ -1,9 +1,10 @@
+import gleam/list
 import gleam/json
 import gleam/dynamic/decode.{type Decoder}
 
+
 pub fn pokemon_encoder(pokemon: Pokemon) -> String {
   json.object([
-    // #("abilities", abilities_encoder(pokemon.abilities)),
     #("base_experience", json.int(pokemon.base_experience)),
     #("cries",
       json.object([
@@ -11,17 +12,20 @@ pub fn pokemon_encoder(pokemon: Pokemon) -> String {
         #("legacy", json.string(pokemon.cries.legacy)),
       ])
     ),
-    // #("forms", json.array(pokemon.forms, forms_encoder())),
     #("id", json.int(pokemon.id)),
     #("is_default", json.bool(pokemon.is_default)),
     #("name", json.string(pokemon.name)),
     #("order", json.int(pokemon.order)),
-    #("stats", json.array(pokemon.stats, of: stat_entry_to_json)),
+    #("stats", 
+      json.object(
+        list.map(pokemon.stats, stat_entry_to_pair)
+      )
+    ),
     #("weight", json.int(pokemon.weight)),
-    // #("game_indices",json.array(pokemon.game_indices, of: game_index_entry_to_json)),
   ])
   |> json.to_string
 }
+
 
 
 
@@ -182,7 +186,10 @@ fn game_index_entry_decoder() -> Decoder(GameIndexEntry) {
   use version <- decode.field("version", version_info_decoder()) 
   decode.success(GameIndexEntry(game_index:, version:))
 }
-
+fn stat_entry_to_pair(stat_entry: StatEntry) -> #(String, json.Json) {
+  let StatEntry(base_stat, stat) = stat_entry
+  #(stat.name, json.int(base_stat))
+}
 pub type GameIndices = List(GameIndexEntry)
 
 fn game_indices_decoder() -> Decoder(List(GameIndexEntry)) {
@@ -213,18 +220,15 @@ fn stat_info_decoder() -> Decoder(StatInfo) {
 pub type StatEntry {
   StatEntry(
     base_stat: Int,
-    effort: Int,
     stat: StatInfo,
   )
 }
 
 
 fn stat_entry_to_json(stat_entry: StatEntry) -> json.Json {
-  let StatEntry(base_stat:, effort:, stat:) = stat_entry
+  let StatEntry(base_stat:, stat:) = stat_entry
   json.object([
-    #("base_stat", json.int(base_stat)),
-    #("effort", json.int(effort)),
-    #("stat", stat_info_to_json(stat)),
+    #(stat.name, json.int(base_stat)),
   ])
 }
 
@@ -232,9 +236,8 @@ fn stat_entry_to_json(stat_entry: StatEntry) -> json.Json {
 
 fn stat_entry_decoder() -> Decoder(StatEntry) {
   use base_stat <- decode.field("base_stat", decode.int)
-  use effort <- decode.field("effort", decode.int)
   use stat <- decode.field("stat", stat_info_decoder())
-  decode.success(StatEntry(base_stat:, effort:, stat:))
+  decode.success(StatEntry(base_stat:, stat:))
 }
 
 pub type Stats = List(StatEntry)
