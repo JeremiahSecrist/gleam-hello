@@ -152,13 +152,13 @@ pub type VersionInfo {
   )
 }
 
-fn version_info_to_json(version_info: VersionInfo) -> json.Json {
-  let VersionInfo(name:, url:) = version_info
-  json.object([
-    #("name", json.string(name)),
-    #("url", json.string(url)),
-  ])
-}
+// fn version_info_to_json(version_info: VersionInfo) -> json.Json {
+  // let VersionInfo(name:, url:) = version_info
+  // json.object([
+    // #("name", json.string(name)),
+    // #("url", json.string(url)),
+  // ])
+// }
 
 fn version_info_decoder() -> Decoder(VersionInfo) {
   use name <- decode.field("name", decode.string)
@@ -173,13 +173,13 @@ pub type GameIndexEntry {
   )
 }
 
-fn game_index_entry_to_json(game_index_entry: GameIndexEntry) -> json.Json {
-  let GameIndexEntry(game_index:, version:) = game_index_entry
-  json.object([
-    #("game_index", json.int(game_index)),
-    #("version", version_info_to_json(version)),
-  ])
-}
+// fn game_index_entry_to_json(game_index_entry: GameIndexEntry) -> json.Json {
+  // let GameIndexEntry(game_index:, version:) = game_index_entry
+  // json.object([
+    // #("game_index", json.int(game_index)),
+    // #("version", version_info_to_json(version)),
+  // ])
+// }
 
 fn game_index_entry_decoder() -> Decoder(GameIndexEntry) {
   use game_index <- decode.field("game_index", decode.int)
@@ -203,13 +203,13 @@ pub type StatInfo {
   )
 }
 
-fn stat_info_to_json(stat_info: StatInfo) -> json.Json {
-  let StatInfo(name:, url:) = stat_info
-  json.object([
-    #("name", json.string(name)),
-    #("url", json.string(url)),
-  ])
-}
+// fn stat_info_to_json(stat_info: StatInfo) -> json.Json {
+  // let StatInfo(name:, url:) = stat_info
+  // json.object([
+    // #("name", json.string(name)),
+    // #("url", json.string(url)),
+  // ])
+// }
 
 fn stat_info_decoder() -> Decoder(StatInfo) {
   use name <- decode.field("name", decode.string)
@@ -225,12 +225,12 @@ pub type StatEntry {
 }
 
 
-fn stat_entry_to_json(stat_entry: StatEntry) -> json.Json {
-  let StatEntry(base_stat:, stat:) = stat_entry
-  json.object([
-    #(stat.name, json.int(base_stat)),
-  ])
-}
+// fn stat_entry_to_json(stat_entry: StatEntry) -> json.Json {
+  // let StatEntry(base_stat:, stat:) = stat_entry
+  // json.object([
+    // #(stat.name, json.int(base_stat)),
+  // ])
+// }
 
 
 
