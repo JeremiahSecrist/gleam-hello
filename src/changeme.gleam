@@ -8,7 +8,7 @@ import wisp
 import wisp/wisp_mist
 import gleam/http/request
 import gleam/httpc
-import pokeapi.{pokemon_decoder,pokemon_encoder}
+import pokeapi.{pokemon_json_parse,pokemon_encoder}
 import cache.{AppState, type CacheMessage, type AppState}
 const url = "https://pokeapi.co/api/v2"
 
@@ -20,7 +20,7 @@ pub fn handle_request(req: wisp.Request, ctx: AppState) -> wisp.Response {
       let cache_key = list.fold(resp, "", fn (a, b){ a <> "/" <> b })
       case get_from_cache_or_fetch(ctx.cache, cache_key, url  <> cache_key) {
         Ok(str) ->
-          case pokemon_decoder(str) {
+          case pokemon_json_parse(str) {
             Ok(val) -> wisp.json_response(string_tree.from_string(pokemon_encoder(val)), 200)
             Error(_) -> wisp.json_response(string_tree.from_string(str), 200)
           }
