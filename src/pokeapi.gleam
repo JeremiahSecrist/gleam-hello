@@ -18,6 +18,7 @@ pub fn pokemon_encoder(pokemon: Pokemon) -> String {
     #("order", json.int(pokemon.order)),
     #("stats", json.array(pokemon.stats, of: stat_entry_to_json)),
     #("weight", json.int(pokemon.weight)),
+    // #("game_indices",json.array(pokemon.game_indices, of: game_index_entry_to_json)),
   ])
   |> json.to_string
 }
@@ -31,7 +32,7 @@ pub type Pokemon{
     cries: Cries,
     name: String,
     forms: List(Forms),
-    // game_indices: GameIndices,
+    game_indices: GameIndices,
     // height: Int,
     // held_items: HeldItems,
     id: Int,
@@ -59,6 +60,7 @@ pub fn pokemon_decoder() -> Decoder(Pokemon) {
   use cries <- decode.field("cries", cries_decoder())
   use name <- decode.field("name", decode.string)
   use forms <- decode.field("forms", decode.list(forms_decoder()))
+  use game_indices <- decode.field("game_indices", game_indices_decoder())
   use id <- decode.field("id", decode.int)
   use is_default <- decode.field("is_default", decode.bool)
   use order <- decode.field("order", decode.int)
@@ -70,6 +72,7 @@ pub fn pokemon_decoder() -> Decoder(Pokemon) {
     cries:, 
     name:, 
     forms:, 
+    game_indices:,
     id:, 
     is_default:,
     order:, 
@@ -145,6 +148,14 @@ pub type VersionInfo {
   )
 }
 
+fn version_info_to_json(version_info: VersionInfo) -> json.Json {
+  let VersionInfo(name:, url:) = version_info
+  json.object([
+    #("name", json.string(name)),
+    #("url", json.string(url)),
+  ])
+}
+
 fn version_info_decoder() -> Decoder(VersionInfo) {
   use name <- decode.field("name", decode.string)
   use url <- decode.field("url", decode.string)
@@ -156,6 +167,14 @@ pub type GameIndexEntry {
     game_index: Int,
     version: VersionInfo,
   )
+}
+
+fn game_index_entry_to_json(game_index_entry: GameIndexEntry) -> json.Json {
+  let GameIndexEntry(game_index:, version:) = game_index_entry
+  json.object([
+    #("game_index", json.int(game_index)),
+    #("version", version_info_to_json(version)),
+  ])
 }
 
 fn game_index_entry_decoder() -> Decoder(GameIndexEntry) {
