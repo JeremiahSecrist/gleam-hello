@@ -1,6 +1,6 @@
-import gleam/otp/actor
-import gleam/erlang/process
 import gleam/dict
+import gleam/erlang/process
+import gleam/otp/actor
 
 // Global cache subject - we'll pass this around
 pub type AppState {
@@ -14,9 +14,11 @@ pub type CacheMessage {
   Shutdown
 }
 
-
 // Start cache actor
-pub fn start() -> Result(actor.Started(process.Subject(CacheMessage)), actor.StartError) {
+pub fn start() -> Result(
+  actor.Started(process.Subject(CacheMessage)),
+  actor.StartError,
+) {
   actor.new(dict.new())
   |> actor.on_message(handle_message)
   |> actor.start()
@@ -27,7 +29,10 @@ pub fn set(cache: process.Subject(CacheMessage), key: String, value: String) {
   process.send(cache, Set(key, value))
 }
 
-pub fn get(cache: process.Subject(CacheMessage), key: String) -> Result(String, Nil) {
+pub fn get(
+  cache: process.Subject(CacheMessage),
+  key: String,
+) -> Result(String, Nil) {
   process.call(cache, 5000, Get(key, _))
 }
 

@@ -1,15 +1,15 @@
-import gleam/io
+import cache.{type AppState, type CacheMessage, AppState}
 import gleam/erlang/process
-import gleam/string_tree
-import gleam/list
-import gleam/result
-import mist
-import wisp
-import wisp/wisp_mist
 import gleam/http/request
 import gleam/httpc
-import pokeapi.{pokemon_json_parse,pokemon_encoder}
-import cache.{AppState, type CacheMessage, type AppState}
+import gleam/io
+import gleam/list
+import gleam/result
+import gleam/string_tree
+import mist
+import pokeapi.{pokemon_encoder, pokemon_json_parse}
+import wisp
+import wisp/wisp_mist
 import write
 
 const url = "https://pokeapi.co/api/v2"
@@ -17,13 +17,17 @@ const url = "https://pokeapi.co/api/v2"
 // Request handler that takes the app state
 pub fn handle_request(req: wisp.Request, ctx: AppState) -> wisp.Response {
   case wisp.path_segments(req) {
-     ["favicon.ico"] ->  wisp.response(204)
+    ["favicon.ico"] -> wisp.response(204)
     resp -> {
-      let cache_key = list.fold(resp, "", fn (a, b){ a <> "/" <> b })
-      case get_from_cache_or_fetch(ctx.cache, cache_key, url  <> cache_key) {
+      let cache_key = list.fold(resp, "", fn(a, b) { a <> "/" <> b })
+      case get_from_cache_or_fetch(ctx.cache, cache_key, url <> cache_key) {
         Ok(str) ->
           case pokemon_json_parse(str) {
-            Ok(val) -> wisp.json_response(string_tree.from_string(pokemon_encoder(val)), 200)
+            Ok(val) ->
+              wisp.json_response(
+                string_tree.from_string(pokemon_encoder(val)),
+                200,
+              )
             Error(_) -> wisp.json_response(string_tree.from_string(str), 200)
           }
         Error(code) -> wisp.response(code)
@@ -33,10 +37,11 @@ pub fn handle_request(req: wisp.Request, ctx: AppState) -> wisp.Response {
 }
 
 // Wrapper to match wisp handler signature
-pub fn request_handler(cache: process.Subject(CacheMessage)) -> fn(wisp.Request) -> wisp.Response {
+pub fn request_handler(
+  cache: process.Subject(CacheMessage),
+) -> fn(wisp.Request) -> wisp.Response {
   handle_request(_, AppState(cache))
 }
-
 
 pub fn get_from_cache_or_fetch(
   cache: process.Subject(CacheMessage),
@@ -54,8 +59,8 @@ pub fn get_from_cache_or_fetch(
 }
 
 pub fn fetch_data(url: String) -> Result(String, Int) {
-  use req <- result.try(request.to(url) |> result.replace_error( 400 ))
-  use resp <- result.try(httpc.send(req) |> result.replace_error( 503 ))
+  use req <- result.try(request.to(url) |> result.replace_error(400))
+  use resp <- result.try(httpc.send(req) |> result.replace_error(503))
   case resp.status {
     200 -> {
       Ok(resp.body)
@@ -79,13 +84,14 @@ pub fn main() {
       io.println("📦 Persistent cache created!")
 
       let secret_key_base = wisp.random_string(64)
-      let assert Ok(_) = wisp_mist.handler(request_handler(cache), secret_key_base)
+      let assert Ok(_) =
+        wisp_mist.handler(request_handler(cache), secret_key_base)
         |> mist.new
         |> mist.port(8000)
         |> mist.start
-      
+
       io.println("🚀 Server running at http://localhost:8000")
-      let _ = write.cf("hello000000","world")
+      let _ = write.cf("hello000000", "world")
       process.sleep_forever()
     }
     Error(_) -> {
