@@ -2,9 +2,10 @@ import gleam/list
 import gleam/json
 import gleam/dynamic/decode.{type Decoder}
 
-
 pub fn pokemon_encoder(pokemon: Pokemon) -> String {
   json.object([
+    #("id", json.int(pokemon.id)),
+    #("name", json.string(pokemon.name)),
     #("base_experience", json.int(pokemon.base_experience)),
     #("cries",
       json.object([
@@ -12,22 +13,18 @@ pub fn pokemon_encoder(pokemon: Pokemon) -> String {
         #("legacy", json.string(pokemon.cries.legacy)),
       ])
     ),
-    #("id", json.int(pokemon.id)),
-    #("is_default", json.bool(pokemon.is_default)),
-    #("name", json.string(pokemon.name)),
+    // #("is_default", json.bool(pokemon.is_default)),
     #("order", json.int(pokemon.order)),
     #("stats", 
       json.object(
         list.map(pokemon.stats, stat_entry_to_pair)
       )
     ),
+    #("moves", moves_to_json(pokemon.moves)),
     #("weight", json.int(pokemon.weight)),
   ])
   |> json.to_string
 }
-
-
-
 
 pub type Pokemon{
   Pokemon(
@@ -42,7 +39,7 @@ pub type Pokemon{
     id: Int,
     is_default: Bool,
     // location_area_encounters: LocationAreaEncounters,
-    // moves: Moves,
+    moves: Moves,
     order: Int,
     // past_abilities: PastAbilities,
     // past_types: PastTypes,
@@ -54,6 +51,32 @@ pub type Pokemon{
   )
 }
 
+pub type Moves = List(Pmove)
+// Decoder for a single Move inside a Pmove
+fn pmove_decoder() -> Decoder(Pmove) {
+  use move <- decode.field("move", move_decoder())
+  decode.success(PMove(move))
+}
+
+pub type Pmove {
+  PMove(move: Move)
+}
+
+pub type Move {
+  Move(name: String)
+}
+
+fn move_decoder() -> Decoder(Move) {
+  use name <- decode.field("name", decode.string)
+  decode.success(Move(name))
+}
+
+fn moves_to_json(moves: Moves) -> json.Json {
+  json.array(moves, fn(pmove) {
+    let PMove(Move(name)) = pmove
+    json.string(name)
+  })
+}
 
 pub fn pokemon_json_parse(string:String) -> Result(Pokemon, json.DecodeError) {
   json.parse(string, pokemon_decoder())
@@ -67,6 +90,7 @@ pub fn pokemon_decoder() -> Decoder(Pokemon) {
   use game_indices <- decode.field("game_indices", game_indices_decoder())
   use id <- decode.field("id", decode.int)
   use is_default <- decode.field("is_default", decode.bool)
+  use moves <- decode.field("moves", decode.list(pmove_decoder()))
   use order <- decode.field("order", decode.int)
   use stats <- decode.field("stats", stats_decoder())
   use weight <- decode.field("weight", decode.int)
@@ -79,6 +103,7 @@ pub fn pokemon_decoder() -> Decoder(Pokemon) {
     game_indices:,
     id:, 
     is_default:,
+    moves:,
     order:, 
     stats:, 
     weight:
@@ -152,14 +177,6 @@ pub type VersionInfo {
   )
 }
 
-// fn version_info_to_json(version_info: VersionInfo) -> json.Json {
-  // let VersionInfo(name:, url:) = version_info
-  // json.object([
-    // #("name", json.string(name)),
-    // #("url", json.string(url)),
-  // ])
-// }
-
 fn version_info_decoder() -> Decoder(VersionInfo) {
   use name <- decode.field("name", decode.string)
   use url <- decode.field("url", decode.string)
@@ -172,14 +189,6 @@ pub type GameIndexEntry {
     version: VersionInfo,
   )
 }
-
-// fn game_index_entry_to_json(game_index_entry: GameIndexEntry) -> json.Json {
-  // let GameIndexEntry(game_index:, version:) = game_index_entry
-  // json.object([
-    // #("game_index", json.int(game_index)),
-    // #("version", version_info_to_json(version)),
-  // ])
-// }
 
 fn game_index_entry_decoder() -> Decoder(GameIndexEntry) {
   use game_index <- decode.field("game_index", decode.int)
@@ -203,14 +212,6 @@ pub type StatInfo {
   )
 }
 
-// fn stat_info_to_json(stat_info: StatInfo) -> json.Json {
-  // let StatInfo(name:, url:) = stat_info
-  // json.object([
-    // #("name", json.string(name)),
-    // #("url", json.string(url)),
-  // ])
-// }
-
 fn stat_info_decoder() -> Decoder(StatInfo) {
   use name <- decode.field("name", decode.string)
   use url <- decode.field("url", decode.string)
@@ -223,15 +224,6 @@ pub type StatEntry {
     stat: StatInfo,
   )
 }
-
-
-// fn stat_entry_to_json(stat_entry: StatEntry) -> json.Json {
-  // let StatEntry(base_stat:, stat:) = stat_entry
-  // json.object([
-    // #(stat.name, json.int(base_stat)),
-  // ])
-// }
-
 
 
 fn stat_entry_decoder() -> Decoder(StatEntry) {

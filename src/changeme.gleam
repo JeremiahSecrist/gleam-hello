@@ -10,6 +10,8 @@ import gleam/http/request
 import gleam/httpc
 import pokeapi.{pokemon_json_parse,pokemon_encoder}
 import cache.{AppState, type CacheMessage, type AppState}
+import write
+
 const url = "https://pokeapi.co/api/v2"
 
 // Request handler that takes the app state
@@ -81,9 +83,9 @@ pub fn main() {
         |> mist.new
         |> mist.port(8000)
         |> mist.start
-
+      
       io.println("🚀 Server running at http://localhost:8000")
-
+      let _ = write.cf("hello000000","world")
       process.sleep_forever()
     }
     Error(_) -> {
