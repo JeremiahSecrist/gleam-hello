@@ -91,7 +91,6 @@ pub fn main() {
         |> mist.start
 
       io.println("🚀 Server running at http://localhost:8000")
-      let _ = write.cf("hello000000", "world")
       process.sleep_forever()
     }
     Error(_) -> {
