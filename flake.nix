@@ -1,5 +1,5 @@
 {
-  description = "CHANGEME";
+  description = "pokapi";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
@@ -10,8 +10,8 @@
   outputs = { self, nixpkgs, flake-utils, gleam2nix }: {
     overlays = rec {
       expects-gleam2nix = final: _: {
-        CHANGEME = final.buildGleamProgram {
-          src = builtins.path { path = ./.; name = "CHANGEME-src"; };
+        pokapi = final.buildGleamProgram {
+          src = builtins.path { path = ./.; name = "pokapi-src"; };
         };
       };
       default = nixpkgs.lib.composeManyExtensions [
@@ -25,13 +25,13 @@
         overlays = [ self.overlays.default ];
         inherit system;
       };
-      inherit (pkgs) CHANGEME mkShell;
+      inherit (pkgs) pokapi mkShell;
     in
     {
-      packages.default = CHANGEME;
+      packages.default = pokapi;
 
       devShells.default = mkShell {
-        inputsFrom = [ pkgs.beamMinimal27Packages.rebar3 CHANGEME ];
+        inputsFrom = [ pkgs.beamMinimal27Packages.rebar3 pokapi ];
       };
     });
 }
