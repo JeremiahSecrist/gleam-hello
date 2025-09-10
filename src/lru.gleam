@@ -15,7 +15,6 @@ fn minimum_by(f: fn(a) -> Int, items: List(a)) -> Option(a) {
 
     // Single item - it's the minimum
     [single_item] -> Some(single_item)
-
     // Multiple items - find the one with minimum f(item) value
     [first_item, ..remaining_items] -> {
       let first_value = f(first_item)
@@ -87,7 +86,7 @@ pub fn insert(
         }
         |> dict.insert(key, #(value, cache.counter))
       let new_counter = case cache.counter >= 1_000_000 {
-        True -> 0
+        True -> 1000
         // Reset to 0 when it gets large
         False -> cache.counter + 1
       }
