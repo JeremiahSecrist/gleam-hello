@@ -90,7 +90,6 @@ pub fn main() {
         |> mist.port(8000)
         |> mist.start
 
-      io.println("🚀 Server running at http://localhost:8000")
       process.sleep_forever()
     }
     Error(_) -> {

@@ -1,8 +1,8 @@
 import gleam/erlang/process
 import gleam/otp/actor
-import lru as l  // your LRU implementation
 import gleam/option.{Some,None}
-// Global cache subject - we'll pass this around
+import lru as l
+import write as w
 pub type AppState {
   AppState(cache: process.Subject(CacheMessage))
 }
@@ -38,6 +38,7 @@ pub fn get(
 
 // Cache message handler
 
+
 fn handle_message(
   cache: l.LruCache(String, String),
   message: CacheMessage,
@@ -47,19 +48,36 @@ fn handle_message(
 
     Set(key, value) -> {
       let cache = l.insert(key, value, cache)
+      let _ = w.create_file(key, value)
       actor.continue(cache)
     }
 
     Get(key, reply_with) -> {
       let #(cache, maybe_value) = l.get(key, cache)
-      let result = 
-        case maybe_value {
-          Some(v) -> Ok(v)
-          None -> Error(Nil)
+
+      case maybe_value {
+        Some(v) -> {
+          process.send(reply_with, Ok(v))
+          actor.continue(cache)
         }
-      process.send(reply_with, result)
-      actor.continue(cache)
+
+        None -> {
+          case w.read_file(key) {
+            Ok(res) -> {
+              // Warm the cache with the file result
+              let cache = l.insert(key, res, cache)
+              process.send(reply_with, Ok(res))
+              actor.continue(cache)
+            }
+            Error(_) -> {
+              process.send(reply_with, Error(Nil))
+              actor.continue(cache)
+            }
+          }
+        }
+      }
     }
   }
 }
+
 
