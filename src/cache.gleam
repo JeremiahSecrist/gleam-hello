@@ -1,7 +1,7 @@
-import gleam/dict
 import gleam/erlang/process
 import gleam/otp/actor
-
+import lru as l  // your LRU implementation
+import gleam/option.{Some,None}
 // Global cache subject - we'll pass this around
 pub type AppState {
   AppState(cache: process.Subject(CacheMessage))
@@ -14,17 +14,17 @@ pub type CacheMessage {
   Shutdown
 }
 
-// Start cache actor
-pub fn start() -> Result(
+// Start cache actor with max size
+pub fn start(max: Int) -> Result(
   actor.Started(process.Subject(CacheMessage)),
   actor.StartError,
 ) {
-  actor.new(dict.new())
+  actor.new(l.empty(max))
   |> actor.on_message(handle_message)
   |> actor.start()
 }
 
-// Cache operations
+// Public cache operations
 pub fn set(cache: process.Subject(CacheMessage), key: String, value: String) {
   process.send(cache, Set(key, value))
 }
@@ -37,17 +37,29 @@ pub fn get(
 }
 
 // Cache message handler
+
 fn handle_message(
-  cache: dict.Dict(String, String),
+  cache: l.LruCache(String, String),
   message: CacheMessage,
-) -> actor.Next(dict.Dict(String, String), CacheMessage) {
+) -> actor.Next(l.LruCache(String, String), CacheMessage) {
   case message {
     Shutdown -> actor.stop()
-    Set(key, value) -> actor.continue(dict.insert(cache, key, value))
+
+    Set(key, value) -> {
+      let cache = l.insert(key, value, cache)
+      actor.continue(cache)
+    }
+
     Get(key, reply_with) -> {
-      let result = dict.get(cache, key)
+      let #(cache, maybe_value) = l.get(key, cache)
+      let result = 
+        case maybe_value {
+          Some(v) -> Ok(v)
+          None -> Error(Nil)
+        }
       process.send(reply_with, result)
       actor.continue(cache)
     }
   }
 }
+
