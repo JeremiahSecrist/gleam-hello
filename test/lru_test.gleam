@@ -124,7 +124,7 @@ pub fn to_dict_test() {
   let cache = l.insert("key1", "value1", cache)
   let cache = l.insert("key2", "value2", cache)
 
-  let dict = l.to_dict(cache)
+  let _dict = l.to_dict(cache)
 
   // Should contain both keys (can't easily test dict contents in gleeunit)
   // But we can test the cache still works after conversion
