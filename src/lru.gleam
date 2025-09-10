@@ -86,7 +86,7 @@ pub fn insert(
         }
         |> dict.insert(key, #(value, cache.counter))
       let new_counter = case cache.counter >= 1_000_000 {
-        True -> 1000
+        True -> 1_000_000 / 2
         // Reset to 0 when it gets large
         False -> cache.counter + 1
       }
