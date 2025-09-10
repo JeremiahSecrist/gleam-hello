@@ -71,24 +71,27 @@ pub fn insert(
   case cache.maximum == 0 {
     True -> cache
     False -> {
-      let remove_old = case dict.size(cache.items) >= cache.maximum {
-        True -> {
-          let get_count = fn(item) {
-            // item : #(key, #(value, Int))
-            let #(_, #(_, c)) = item
-            c
+      let new_items =
+        case dict.size(cache.items) >= cache.maximum {
+          True -> {
+            let get_count = fn(item) {
+              let #(_, #(_, c)) = item
+              c
+            }
+            case minimum_by(get_count, dict.to_list(cache.items)) {
+              Some(#(removed_key, _)) -> dict.delete(cache.items, removed_key)
+              None -> cache.items
+            }
           }
-          let items_list = dict.to_list(cache.items)
-          let key_to_remove = minimum_by(get_count, items_list)
-          case key_to_remove {
-            Some(#(removed_key, _)) -> dict.delete(cache.items, removed_key)
-            None -> cache.items
-          }
+          False -> cache.items
         }
-        False -> cache.items
+        |> dict.insert(key, #(value, cache.counter))
+      let new_counter = case cache.counter >= 1_000_000 {
+        True -> 0
+        // Reset to 0 when it gets large
+        False -> cache.counter + 1
       }
-      let new_items = dict.insert(remove_old, key, #(value, cache.counter))
-      LruCache(..cache, items: new_items, counter: cache.counter + 1)
+      LruCache(..cache, items: new_items, counter: new_counter)
     }
   }
 }
