@@ -10,7 +10,7 @@ import mist
 import pokeapi.{pokemon_encoder, pokemon_json_parse}
 import wisp
 import wisp/wisp_mist
-import write
+// import write
 
 const url = "https://pokeapi.co/api/v2"
 
@@ -77,7 +77,7 @@ pub fn main() {
   io.println("🏁 Starting Pokemon API with persistent caching...")
 
   // Create a persistent cache that survives across requests
-  case cache.start() {
+  case cache.start(100) {
     Ok(started) -> {
       let cache = started.data
 
