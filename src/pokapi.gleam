@@ -1,3 +1,5 @@
+import yodel
+import yodel/input
 import cache.{type AppState, type CacheMessage, AppState}
 import gleam/erlang/process
 import gleam/http/request
@@ -73,11 +75,13 @@ pub fn fetch_data(url: String) -> Result(String, Int) {
 
 pub fn main() {
   wisp.configure_logger()
-
+  let assert Ok(file) = input.read_file(from:"./config.toml")
+  let assert Ok(ctx) = yodel.load(file)
+  let assert Ok(count) = yodel.get_int(ctx,"count")
   io.println("🏁 Starting Pokemon API with persistent caching...")
 
   // Create a persistent cache that survives across requests
-  case cache.start(100) {
+  case cache.start(count) {
     Ok(started) -> {
       let cache = started.data
 
