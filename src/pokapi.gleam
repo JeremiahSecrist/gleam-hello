@@ -78,22 +78,16 @@ pub fn main() {
   let assert Ok(file) = input.read_file(from:"./config.toml")
   let assert Ok(ctx) = yodel.load(file)
   let assert Ok(count) = yodel.get_int(ctx,"count")
-  io.println("🏁 Starting Pokemon API with persistent caching...")
-
-  // Create a persistent cache that survives across requests
+  let assert Ok(port) = yodel.get_int(ctx,"port")
   case cache.start(count) {
     Ok(started) -> {
       let cache = started.data
-
-      io.println("📦 Persistent cache created!")
-
       let secret_key_base = wisp.random_string(64)
       let assert Ok(_) =
         wisp_mist.handler(request_handler(cache), secret_key_base)
         |> mist.new
-        |> mist.port(8000)
+        |> mist.port(port)
         |> mist.start
-
       process.sleep_forever()
     }
     Error(_) -> {
